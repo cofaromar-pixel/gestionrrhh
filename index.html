@@ -253,6 +253,30 @@
   .contacto-rel { font-size: 11px; color: var(--text3); font-family: var(--mono); }
   .contacto-tel { font-family: var(--mono); color: var(--accent-lim); font-size: 13px; }
 
+  /* ── LINKS ── */
+  .link-card {
+    background: var(--bg3); border: 1px solid var(--border); padding: 16px 20px;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 16px;
+    transition: border-color 0.2s;
+  }
+  .link-card:hover { border-color: var(--accent-seg); }
+  .link-icon { font-size: 22px; flex-shrink: 0; }
+  .link-body { flex: 1; min-width: 0; }
+  .link-titulo { color: var(--white); font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .link-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 3px; }
+  .link-url { font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+  .link-desc { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .link-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* ── LICENCIAS ── */
+  .lic-card {
+    background: var(--bg3); border: 1px solid var(--border); padding: 16px; margin-bottom: 10px;
+  }
+  .lic-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .lic-nombre { color: var(--white); font-weight: 600; }
+  .lic-periodo { font-family: var(--mono); font-size: 12px; color: var(--accent-warn); }
+  .lic-meta { font-size: 12px; color: var(--text3); line-height: 1.8; }
+
   @media print {
     .topbar, .nav-tabs, .filter-bar, .btn, .modal-close { display: none !important; }
     .main { padding: 0; }
@@ -302,6 +326,8 @@
     <div class="nav-tab active" onclick="showTab('dashboard')">Dashboard</div>
     <div class="nav-tab" onclick="showTab('personal')">Personal</div>
     <div class="nav-tab" onclick="showTab('horas')">Horas / Liquidación</div>
+    <div class="nav-tab" onclick="showTab('licencias')">Licencias</div>
+    <div class="nav-tab" onclick="showTab('links')">Links</div>
     <div class="nav-tab" onclick="showTab('alertas')">Alertas</div>
     <div class="nav-tab" onclick="showTab('config')">Configuración</div>
   </div>
@@ -350,7 +376,7 @@
                 <th>#</th>
                 <th>Foto</th>
                 <th>Apellido y Nombre</th>
-                <th>DNI</th>
+                <th>DNI/CUIT</th>
                 <th>Sector</th>
                 <th>Ingreso</th>
                 <th>Pago</th>
@@ -383,6 +409,52 @@
         <input id="filtHorasNombre" type="text" placeholder="Buscar operario..." oninput="renderHoras()" style="min-width:200px">
       </div>
       <div id="horasContainer"></div>
+    </div>
+
+    <!-- ═══ LICENCIAS ═══ -->
+    <div class="section" id="sec-licencias">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:var(--mono);font-size:13px;color:var(--white);letter-spacing:2px;text-transform:uppercase">Licencias / Vacaciones</div>
+        <button class="btn btn-primary" onclick="openModalLicencia()">+ Registrar Licencia</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filtLicSector" onchange="renderLicencias()">
+          <option value="">Todos los sectores</option>
+          <option value="SEGURIDAD">Seguridad</option>
+          <option value="LIMPIEZA">Limpieza</option>
+        </select>
+        <select id="filtLicTipo" onchange="renderLicencias()">
+          <option value="">Todos los tipos</option>
+          <option value="VACACIONES">Vacaciones</option>
+          <option value="LICENCIA">Licencia</option>
+          <option value="AUSENCIA">Ausencia</option>
+        </select>
+        <select id="filtLicPago" onchange="renderLicencias()">
+          <option value="">Pagas y no pagas</option>
+          <option value="SI">Pagas</option>
+          <option value="NO">No pagas</option>
+        </select>
+        <input id="filtLicNombre" type="text" placeholder="Buscar operario..." oninput="renderLicencias()" style="min-width:200px">
+      </div>
+      <div id="licenciasContainer"></div>
+    </div>
+
+    <!-- ═══ LINKS ═══ -->
+    <div class="section" id="sec-links">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-family:var(--mono);font-size:13px;color:var(--white);letter-spacing:2px;text-transform:uppercase">Links de Recursos</div>
+        <button class="btn btn-primary" onclick="openModalLink()">+ Nuevo Link</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filtLinkSector" onchange="renderLinks()">
+          <option value="">Todos los sectores</option>
+          <option value="SEGURIDAD">Seguridad</option>
+          <option value="LIMPIEZA">Limpieza</option>
+          <option value="GENERAL">General</option>
+        </select>
+        <input id="filtLinkQ" type="text" placeholder="Buscar por título o descripción..." oninput="renderLinks()" style="min-width:220px">
+      </div>
+      <div id="linksContainer"></div>
     </div>
 
     <!-- ═══ ALERTAS ═══ -->
@@ -446,7 +518,7 @@
         <div class="form-row">
           <div class="form-group"><label>Apellido *</label><input id="opApellido" type="text"></div>
           <div class="form-group"><label>Nombre *</label><input id="opNombre" type="text"></div>
-          <div class="form-group"><label>DNI *</label><input id="opDni" type="text"></div>
+          <div class="form-group"><label>DNI / CUIT *</label><input id="opDni" type="text"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Fecha de Nacimiento</label><input id="opFechaNac" type="date"></div>
@@ -590,11 +662,78 @@
   </div>
 </div>
 
+<!-- ═══════ MODAL LINK ═══════ -->
+<div class="modal-overlay" id="modalLink">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" onclick="closeModal('modalLink')">✕</button>
+    <div class="modal-title" id="modalLinkTitle">Nuevo Link</div>
+    <div class="form-group"><label>Título *</label><input id="lkTitulo" type="text" placeholder="Ej: Planilla Guardias Enero"></div>
+    <div class="form-group"><label>URL *</label><input id="lkUrl" type="url" placeholder="https://..."></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Sector</label>
+        <select id="lkSector">
+          <option value="SEGURIDAD">Seguridad</option>
+          <option value="LIMPIEZA">Limpieza</option>
+          <option value="GENERAL">General</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Categoría</label><input id="lkCategoria" type="text" placeholder="Ej: Planillas, Normas, Turnos..."></div>
+    </div>
+    <div class="form-group"><label>Descripción</label><textarea id="lkDesc" rows="2" placeholder="Descripción breve del enlace..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" style="border-color:var(--border);color:var(--text3)" onclick="closeModal('modalLink')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLink()">Guardar Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL LICENCIA ═══════ -->
+<div class="modal-overlay" id="modalLicencia">
+  <div class="modal" style="max-width:600px">
+    <button class="modal-close" onclick="closeModal('modalLicencia')">✕</button>
+    <div class="modal-title" id="modalLicTitle">Registrar Licencia / Vacación</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Operario *</label>
+        <select id="licOpSelect"></select>
+      </div>
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select id="licTipo">
+          <option value="VACACIONES">Vacaciones</option>
+          <option value="LICENCIA">Licencia</option>
+          <option value="AUSENCIA">Ausencia</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha Inicio *</label><input id="licFechaInicio" type="date" oninput="calcDiasLic()"></div>
+      <div class="form-group"><label>Fecha Fin *</label><input id="licFechaFin" type="date" oninput="calcDiasLic()"></div>
+      <div class="form-group"><label>Días (calculado)</label><input id="licDias" type="number" min="0" placeholder="0" readonly style="opacity:0.6"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>¿Es paga?</label>
+        <select id="licPaga">
+          <option value="SI">Sí — Licencia paga</option>
+          <option value="NO">No — Sin goce de sueldo</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Observaciones</label><textarea id="licObs" rows="2" placeholder="Motivo, acuerdo, notas..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" style="border-color:var(--border);color:var(--text3)" onclick="closeModal('modalLicencia')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLicencia()">Guardar Licencia</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════
-let db = { operarios: [], horas: [] };
+let db = { operarios: [], horas: [], links: [], licencias: [] };
 let currentEditId = null;
 let currentFotoBase64 = null;
 let contactosTemp = [];
@@ -610,6 +749,8 @@ function saveDB() { localStorage.setItem('rrhh_db', JSON.stringify(db)); }
 function loadDB() {
   const d = localStorage.getItem('rrhh_db');
   if (d) db = JSON.parse(d);
+  if (!db.links) db.links = [];
+  if (!db.licencias) db.licencias = [];
 }
 function getCreds() {
   return JSON.parse(localStorage.getItem('rrhh_creds') || JSON.stringify({ user: DEFAULT_USER, pass: DEFAULT_PASS }));
@@ -667,6 +808,8 @@ function showTab(t) {
   if (t === 'dashboard') renderDashboard();
   if (t === 'personal') renderTabla();
   if (t === 'horas') renderHoras();
+  if (t === 'licencias') renderLicencias();
+  if (t === 'links') renderLinks();
   if (t === 'alertas') renderAlertas();
   if (t === 'config') renderConfig();
 }
@@ -675,6 +818,8 @@ function renderAll() {
   renderDashboard();
   renderTabla();
   renderHoras();
+  renderLicencias();
+  renderLinks();
   renderAlertas();
   renderConfig();
 }
@@ -1205,7 +1350,7 @@ function renderConfig() {
 }
 
 function clearAll() {
-  db = { operarios: [], horas: [] };
+  db = { operarios: [], horas: [], links: [], licencias: [] };
   saveDB(); renderAll();
 }
 
@@ -1232,12 +1377,241 @@ function importData(input) {
       if (!confirm(`Importar ${data.operarios.length} operarios y ${data.horas.length} registros de horas? Los datos actuales serán reemplazados.`)) return;
       db.operarios = data.operarios;
       db.horas = data.horas;
+      db.links = data.links || [];
+      db.licencias = data.licencias || [];
       saveDB(); renderAll();
       alert('✓ Datos importados correctamente.');
     } catch(err) { alert('Error al importar: ' + err.message); }
   };
   reader.readAsText(file);
   input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════
+//  LINKS
+// ═══════════════════════════════════════════════════════
+let currentEditLinkId = null;
+
+function openModalLink(id) {
+  currentEditLinkId = null;
+  ['lkTitulo','lkUrl','lkCategoria','lkDesc'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('lkSector').value = 'SEGURIDAD';
+  document.getElementById('modalLinkTitle').textContent = 'Nuevo Link';
+  if (id) {
+    currentEditLinkId = id;
+    const lk = db.links.find(l => l.id === id);
+    if (!lk) return;
+    document.getElementById('modalLinkTitle').textContent = 'Editar Link';
+    document.getElementById('lkTitulo').value = lk.titulo;
+    document.getElementById('lkUrl').value = lk.url;
+    document.getElementById('lkSector').value = lk.sector;
+    document.getElementById('lkCategoria').value = lk.categoria || '';
+    document.getElementById('lkDesc').value = lk.desc || '';
+  }
+  document.getElementById('modalLink').classList.add('open');
+}
+
+function saveLink() {
+  const titulo = document.getElementById('lkTitulo').value.trim();
+  const url = document.getElementById('lkUrl').value.trim();
+  if (!titulo || !url) { alert('Título y URL son obligatorios.'); return; }
+  const data = {
+    titulo, url,
+    sector: document.getElementById('lkSector').value,
+    categoria: document.getElementById('lkCategoria').value.trim(),
+    desc: document.getElementById('lkDesc').value.trim(),
+  };
+  if (currentEditLinkId) {
+    const idx = db.links.findIndex(l => l.id === currentEditLinkId);
+    if (idx >= 0) db.links[idx] = { ...db.links[idx], ...data };
+  } else {
+    db.links.push({ id: uid(), creadoEn: new Date().toISOString(), ...data });
+  }
+  saveDB(); closeModal('modalLink'); renderLinks();
+}
+
+function deleteLink(id) {
+  if (!confirm('¿Eliminar este link?')) return;
+  db.links = db.links.filter(l => l.id !== id);
+  saveDB(); renderLinks();
+}
+
+const SECTOR_ICONS = { SEGURIDAD: '🔐', LIMPIEZA: '🧹', GENERAL: '🔗' };
+
+function renderLinks() {
+  const sec = document.getElementById('filtLinkSector').value;
+  const q = (document.getElementById('filtLinkQ').value || '').toLowerCase();
+
+  let items = db.links.filter(l => {
+    if (sec && l.sector !== sec) return false;
+    if (q && !(l.titulo + ' ' + l.desc + ' ' + l.categoria).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => a.sector.localeCompare(b.sector) || a.titulo.localeCompare(b.titulo));
+
+  const container = document.getElementById('linksContainer');
+  if (!items.length) {
+    container.innerHTML = '<div style="color:var(--text3);text-align:center;padding:48px;font-family:var(--mono)">Sin links registrados. Agregá el primero →</div>';
+    return;
+  }
+
+  // Agrupar por sector
+  const grupos = {};
+  items.forEach(l => {
+    if (!grupos[l.sector]) grupos[l.sector] = [];
+    grupos[l.sector].push(l);
+  });
+
+  container.innerHTML = Object.entries(grupos).map(([sec, links]) => `
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-title">
+        <span class="dot" style="background:${sec === 'SEGURIDAD' ? 'var(--accent-seg)' : sec === 'LIMPIEZA' ? 'var(--accent-lim)' : 'var(--accent-purple)'}"></span>
+        ${sec}
+      </div>
+      ${links.map(l => `
+        <div class="link-card">
+          <div class="link-icon">${SECTOR_ICONS[l.sector] || '🔗'}</div>
+          <div class="link-body">
+            <div class="link-titulo">${l.titulo}</div>
+            <div class="link-meta">${l.categoria ? l.categoria + ' · ' : ''}${l.sector}</div>
+            ${l.desc ? `<div class="link-desc">${l.desc}</div>` : ''}
+            <div class="link-url">${l.url}</div>
+          </div>
+          <div class="link-actions">
+            <a href="${l.url}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="text-decoration:none">↗ Abrir</a>
+            <button class="btn btn-sm btn-warn" onclick="openModalLink('${l.id}')">Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteLink('${l.id}')">✕</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  LICENCIAS / VACACIONES
+// ═══════════════════════════════════════════════════════
+let currentEditLicId = null;
+
+function openModalLicencia(id) {
+  currentEditLicId = null;
+  const activos = db.operarios.filter(isActivo).sort((a, b) => a.apellido.localeCompare(b.apellido));
+  document.getElementById('licOpSelect').innerHTML = activos.map(o =>
+    `<option value="${o.id}">${o.apellido}, ${o.nombre} (${o.sector})</option>`
+  ).join('');
+  ['licFechaInicio','licFechaFin','licObs'].forEach(f => document.getElementById(f).value = '');
+  document.getElementById('licDias').value = '';
+  document.getElementById('licTipo').value = 'VACACIONES';
+  document.getElementById('licPaga').value = 'SI';
+  document.getElementById('modalLicTitle').textContent = 'Registrar Licencia / Vacación';
+
+  if (id) {
+    currentEditLicId = id;
+    const lic = db.licencias.find(l => l.id === id);
+    if (!lic) return;
+    document.getElementById('modalLicTitle').textContent = 'Editar Licencia';
+    document.getElementById('licOpSelect').value = lic.opId;
+    document.getElementById('licTipo').value = lic.tipo;
+    document.getElementById('licFechaInicio').value = lic.fechaInicio;
+    document.getElementById('licFechaFin').value = lic.fechaFin;
+    document.getElementById('licDias').value = lic.dias;
+    document.getElementById('licPaga').value = lic.paga;
+    document.getElementById('licObs').value = lic.obs || '';
+  }
+  document.getElementById('modalLicencia').classList.add('open');
+}
+
+function calcDiasLic() {
+  const ini = document.getElementById('licFechaInicio').value;
+  const fin = document.getElementById('licFechaFin').value;
+  if (ini && fin) {
+    const d = Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
+    document.getElementById('licDias').value = d > 0 ? d : 0;
+  }
+}
+
+function saveLicencia() {
+  const opId = document.getElementById('licOpSelect').value;
+  const fechaInicio = document.getElementById('licFechaInicio').value;
+  const fechaFin = document.getElementById('licFechaFin').value;
+  if (!opId || !fechaInicio || !fechaFin) { alert('Operario, fecha inicio y fecha fin son obligatorios.'); return; }
+  if (fechaFin < fechaInicio) { alert('La fecha de fin no puede ser anterior a la de inicio.'); return; }
+  const data = {
+    opId,
+    tipo: document.getElementById('licTipo').value,
+    fechaInicio, fechaFin,
+    dias: parseInt(document.getElementById('licDias').value) || 0,
+    paga: document.getElementById('licPaga').value,
+    obs: document.getElementById('licObs').value,
+  };
+  if (currentEditLicId) {
+    const idx = db.licencias.findIndex(l => l.id === currentEditLicId);
+    if (idx >= 0) db.licencias[idx] = { ...db.licencias[idx], ...data };
+  } else {
+    db.licencias.push({ id: uid(), creadoEn: new Date().toISOString(), ...data });
+  }
+  saveDB(); closeModal('modalLicencia'); renderLicencias();
+}
+
+function deleteLicencia(id) {
+  if (!confirm('¿Eliminar este registro de licencia?')) return;
+  db.licencias = db.licencias.filter(l => l.id !== id);
+  saveDB(); renderLicencias();
+}
+
+function renderLicencias() {
+  const sec = document.getElementById('filtLicSector').value;
+  const tipo = document.getElementById('filtLicTipo').value;
+  const pago = document.getElementById('filtLicPago').value;
+  const q = (document.getElementById('filtLicNombre').value || '').toLowerCase();
+
+  let items = db.licencias.filter(l => {
+    const op = db.operarios.find(o => o.id === l.opId);
+    if (!op) return false;
+    if (sec && op.sector !== sec) return false;
+    if (tipo && l.tipo !== tipo) return false;
+    if (pago && l.paga !== pago) return false;
+    if (q && !(op.apellido + ' ' + op.nombre).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio));
+
+  const container = document.getElementById('licenciasContainer');
+  if (!items.length) {
+    container.innerHTML = '<div style="color:var(--text3);text-align:center;padding:48px;font-family:var(--mono)">Sin licencias registradas para los filtros seleccionados</div>';
+    return;
+  }
+
+  const tipoBadge = t => ({
+    VACACIONES: '<span class="badge badge-ok">Vacaciones</span>',
+    LICENCIA:   '<span class="badge badge-warn">Licencia</span>',
+    AUSENCIA:   '<span class="badge badge-no">Ausencia</span>',
+  }[t] || t);
+
+  container.innerHTML = items.map(l => {
+    const op = db.operarios.find(o => o.id === l.opId);
+    if (!op) return '';
+    return `<div class="lic-card">
+      <div class="lic-card-head">
+        <div>
+          <div class="lic-nombre">${op.apellido}, ${op.nombre}
+            <span class="badge badge-${op.sector === 'SEGURIDAD' ? 'seg' : 'lim'}" style="margin-left:8px">${op.sector}</span>
+          </div>
+          <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            ${tipoBadge(l.tipo)}
+            <span class="badge" style="background:${l.paga === 'SI' ? 'rgba(0,232,120,0.1)' : 'rgba(255,77,109,0.1)'};color:${l.paga === 'SI' ? 'var(--accent-lim)' : 'var(--accent-danger)'};border:1px solid ${l.paga === 'SI' ? 'rgba(0,232,120,0.3)' : 'rgba(255,77,109,0.3)'}">
+              ${l.paga === 'SI' ? '✓ Paga' : '✕ No paga'}
+            </span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="lic-periodo">${fmtDate(l.fechaInicio)} → ${fmtDate(l.fechaFin)}</div>
+          <div style="font-family:var(--mono);font-size:18px;color:var(--white);margin-top:4px">${l.dias} día${l.dias !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      ${l.obs ? `<div class="lic-meta"><em style="color:var(--text2)">${l.obs}</em></div>` : ''}
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn-sm btn-warn" onclick="openModalLicencia('${l.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteLicencia('${l.id}')">✕ Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════
