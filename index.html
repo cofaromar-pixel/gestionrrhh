@@ -527,6 +527,24 @@
         </div>
         <div class="form-row">
           <div class="form-group"><label>Celular / Teléfono</label><input id="opCelular" type="text"></div>
+          <div class="form-group">
+            <label>Grupo Sanguíneo</label>
+            <select id="opGrupoSang">
+              <option value="">Sin especificar</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>O+</option><option>O-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Asegurado</label>
+            <select id="opAsegurado">
+              <option value="">Sin especificar</option>
+              <option value="SI">Sí</option>
+              <option value="NO">No</option>
+            </select>
+          </div>
         </div>
 
         <!-- DATOS LABORALES -->
@@ -571,7 +589,6 @@
 
         <!-- CHECKLIST -->
         <div class="form-section-title">Checklist de Documentación</div>
-        <div class="checkbox-group"><input type="checkbox" id="ckConductaPol"><label for="ckConductaPol">Presentó certificado de Buena Conducta — Policía de Cba</label></div>
         <div class="checkbox-group"><input type="checkbox" id="ckConductaRen"><label for="ckConductaRen">Presentó certificado de Buena Conducta — RENAPER</label></div>
         <div class="checkbox-group"><input type="checkbox" id="ckFichaIng"><label for="ckFichaIng">Completó la ficha de ingreso a la empresa</label></div>
 
@@ -620,7 +637,6 @@
     <div class="form-row">
       <div class="form-group"><label>Días trabajados</label><input id="hDias" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Horas normales</label><input id="hHorasNorm" type="number" min="0" step="0.5" placeholder="0" oninput="calcLiq()"></div>
-      <div class="form-group"><label>Ajuste por diferencia ($)</label><input id="hAjuste" type="number" step="0.01" placeholder="0.00" oninput="calcLiq()" title="Monto adicional sumado a la facturación. Indicá el motivo en Observaciones."></div>
       <div class="form-group"><label>Horas extra 50%</label><input id="hHoras50" type="number" min="0" step="0.5" placeholder="0" oninput="calcLiq()"></div>
       <div class="form-group"><label>Horas extra 100%</label><input id="hHoras100" type="number" min="0" step="0.5" placeholder="0" oninput="calcLiq()"></div>
     </div>
@@ -637,7 +653,6 @@
     <div class="liq-box" id="previewLiq">
       <div class="liq-nro">PREVIEW LIQUIDACIÓN</div>
       <div class="liq-row"><span>Horas normales</span><span id="pNorm">$0.00</span></div>
-      <div class="liq-row"><span>Ajuste por diferencia</span><span id="pAjuste" style="color:var(--accent-purple)">$0.00</span></div>
       <div class="liq-row"><span>Horas extra 50%</span><span id="pExtra50">$0.00</span></div>
       <div class="liq-row"><span>Horas extra 100%</span><span id="pExtra100">$0.00</span></div>
       <div class="liq-row"><span>Subtotal</span><span id="pSub">$0.00</span></div>
@@ -843,7 +858,7 @@ function legajoNum(id) {
   const idx = db.operarios.findIndex(o => o.id === id);
   return 'LEG-' + String(idx + 1).padStart(4, '0');
 }
-function docsOk(op) { return op.ckConductaPol && op.ckConductaRen && op.ckFichaIng; }
+function docsOk(op) { return op.ckConductaRen && op.ckFichaIng; }
 function isActivo(op) { return !op.fechaEgr; }
 
 // ═══════════════════════════════════════════════════════
@@ -933,8 +948,9 @@ function openModal(modo, id) {
   document.getElementById('fotoInput').value = '';
 
   const campos = ['opApellido','opNombre','opDni','opFechaNac','opDomicilio','opEmail','opCelular',
+    'opGrupoSang','opAsegurado',
     'opSector','opFechaIng','opModalidad','opValorHora','opMonotributo','opVtoMono','opFechaEgr','opObsEgr',
-    'ckConductaPol','ckConductaRen','ckFichaIng','opObs'];
+    'ckConductaRen','ckFichaIng','opObs'];
 
   campos.forEach(c => {
     const el = document.getElementById(c);
@@ -959,6 +975,8 @@ function openModal(modo, id) {
     document.getElementById('opDomicilio').value = o.domicilio || '';
     document.getElementById('opEmail').value = o.email || '';
     document.getElementById('opCelular').value = o.celular || '';
+    document.getElementById('opGrupoSang').value = o.grupoSang || '';
+    document.getElementById('opAsegurado').value = o.asegurado || '';
     document.getElementById('opSector').value = o.sector || 'SEGURIDAD';
     document.getElementById('opFechaIng').value = o.fechaIng || '';
     document.getElementById('opModalidad').value = o.modalidad || 'QUINCENAL';
@@ -967,7 +985,6 @@ function openModal(modo, id) {
     document.getElementById('opVtoMono').value = o.vtoMono || '';
     document.getElementById('opFechaEgr').value = o.fechaEgr || '';
     document.getElementById('opObsEgr').value = o.obsEgr || '';
-    document.getElementById('ckConductaPol').checked = !!o.ckConductaPol;
     document.getElementById('ckConductaRen').checked = !!o.ckConductaRen;
     document.getElementById('ckFichaIng').checked = !!o.ckFichaIng;
     document.getElementById('opObs').value = o.obs || '';
@@ -1034,6 +1051,8 @@ function saveOperario() {
     domicilio: document.getElementById('opDomicilio').value,
     email: document.getElementById('opEmail').value,
     celular: document.getElementById('opCelular').value,
+    grupoSang: document.getElementById('opGrupoSang').value,
+    asegurado: document.getElementById('opAsegurado').value,
     sector: document.getElementById('opSector').value,
     modalidad: document.getElementById('opModalidad').value,
     valorHora: parseFloat(document.getElementById('opValorHora').value) || 0,
@@ -1041,7 +1060,6 @@ function saveOperario() {
     vtoMono: document.getElementById('opVtoMono').value,
     fechaEgr: document.getElementById('opFechaEgr').value,
     obsEgr: document.getElementById('opObsEgr').value,
-    ckConductaPol: document.getElementById('ckConductaPol').checked,
     ckConductaRen: document.getElementById('ckConductaRen').checked,
     ckFichaIng: document.getElementById('ckFichaIng').checked,
     obs: document.getElementById('opObs').value,
@@ -1097,6 +1115,8 @@ function verOperario(id) {
           <tr><td style="color:var(--text3);padding:4px 12px 4px 0;font-family:var(--mono)">Domicilio</td><td>${o.domicilio || '—'}</td></tr>
           <tr><td style="color:var(--text3);padding:4px 12px 4px 0;font-family:var(--mono)">E-mail</td><td>${o.email || '—'}</td></tr>
           <tr><td style="color:var(--text3);padding:4px 12px 4px 0;font-family:var(--mono)">Celular</td><td>${o.celular || '—'}</td></tr>
+          ${o.grupoSang ? `<tr><td style="color:var(--text3);padding:4px 12px 4px 0;font-family:var(--mono)">Grupo Sanguíneo</td><td><strong style="color:var(--accent-danger)">${o.grupoSang}</strong></td></tr>` : ''}
+          ${o.asegurado ? `<tr><td style="color:var(--text3);padding:4px 12px 4px 0;font-family:var(--mono)">Asegurado</td><td>${o.asegurado === 'SI' ? '<span class="badge badge-ok">✓ Sí</span>' : '<span class="badge badge-no">✕ No</span>'}</td></tr>` : ''}
         </tbody></table>
       </div>
       <div>
@@ -1114,7 +1134,6 @@ function verOperario(id) {
 
     <div class="panel-title" style="margin-bottom:10px">Checklist Documentación</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-      <span class="badge ${o.ckConductaPol ? 'badge-ok' : 'badge-no'}">${o.ckConductaPol ? '✓' : '✕'} Buena Conducta Policía</span>
       <span class="badge ${o.ckConductaRen ? 'badge-ok' : 'badge-no'}">${o.ckConductaRen ? '✓' : '✕'} Buena Conducta RENAPER</span>
       <span class="badge ${o.ckFichaIng ? 'badge-ok' : 'badge-no'}">${o.ckFichaIng ? '✓' : '✕'} Ficha de Ingreso</span>
     </div>
@@ -1143,7 +1162,6 @@ function verOperario(id) {
         </div>
         <div class="horas-desglose">
           Días: ${h.dias} · Horas norm: ${h.horasNorm}h · Extra 50%: ${h.horas50}h · Extra 100%: ${h.horas100}h
-          ${h.ajuste > 0 ? `· <span style="color:var(--accent-purple)">Ajuste: +${fmt$(h.ajuste)}</span>` : ''}
           ${h.nroFactura ? `· Fact: <span style="color:var(--accent-seg)">${h.nroFactura}</span>` : ''}
           ${h.anticipo > 0 ? `<br>Anticipo: -${fmt$(h.anticipo)} · <strong style="color:var(--accent-lim)">Neto: ${fmt$(h.total - h.anticipo)}</strong>` : ''}
           ${h.obs ? `<br><em>${h.obs}</em>` : ''}
@@ -1168,7 +1186,7 @@ function openModalHoras() {
   const today = new Date();
   document.getElementById('hPeriodo').value = today.toISOString().substr(0, 7);
 
-  ['hDias','hHorasNorm','hHoras50','hHoras100','hAjuste','hAnticipo','hNroFactura','hObs'].forEach(id => {
+  ['hDias','hHorasNorm','hHoras50','hHoras100','hAnticipo','hNroFactura','hObs'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('hModalidad').value = 'MENSUAL';
@@ -1192,17 +1210,15 @@ function calcLiq() {
   const hn = parseFloat(document.getElementById('hHorasNorm').value) || 0;
   const h50 = parseFloat(document.getElementById('hHoras50').value) || 0;
   const h100 = parseFloat(document.getElementById('hHoras100').value) || 0;
-  const ajuste = parseFloat(document.getElementById('hAjuste').value) || 0;
   const ant = parseFloat(document.getElementById('hAnticipo').value) || 0;
 
   const norm = vh * hn;
   const extra50 = vh * 1.5 * h50;
   const extra100 = vh * 2 * h100;
-  const sub = norm + ajuste + extra50 + extra100;
+  const sub = norm + extra50 + extra100;
   const total = sub;
 
   document.getElementById('pNorm').textContent = fmt$(norm);
-  document.getElementById('pAjuste').textContent = fmt$(ajuste);
   document.getElementById('pExtra50').textContent = fmt$(extra50);
   document.getElementById('pExtra100').textContent = fmt$(extra100);
   document.getElementById('pSub').textContent = fmt$(sub);
@@ -1219,10 +1235,9 @@ function saveHoras() {
   const hn = parseFloat(document.getElementById('hHorasNorm').value) || 0;
   const h50 = parseFloat(document.getElementById('hHoras50').value) || 0;
   const h100 = parseFloat(document.getElementById('hHoras100').value) || 0;
-  const ajuste = parseFloat(document.getElementById('hAjuste').value) || 0;
   const ant = parseFloat(document.getElementById('hAnticipo').value) || 0;
 
-  const total = (vh * hn) + ajuste + (vh * 1.5 * h50) + (vh * 2 * h100);
+  const total = (vh * hn) + (vh * 1.5 * h50) + (vh * 2 * h100);
 
   db.horas.push({
     id: uid(),
@@ -1230,7 +1245,6 @@ function saveHoras() {
     modalidad: document.getElementById('hModalidad').value,
     dias: parseFloat(document.getElementById('hDias').value) || 0,
     horasNorm: hn, horas50: h50, horas100: h100,
-    ajuste,
     valorHora: vh, anticipo: ant, total,
     nroFactura: document.getElementById('hNroFactura').value,
     obs: document.getElementById('hObs').value,
@@ -1290,7 +1304,6 @@ function renderHoras() {
       </div>
       <div class="horas-desglose">
         Días: <strong>${h.dias}</strong> · Horas norm: <strong>${h.horasNorm}h</strong> (${fmt$(h.valorHora)}/h)
-        ${h.ajuste > 0 ? ` · Ajuste: <strong style="color:var(--accent-purple)">+${fmt$(h.ajuste)}</strong>` : ''}
         ${h.horas50 > 0 ? ` · Extra 50%: <strong style="color:var(--accent-warn)">${h.horas50}h</strong>` : ''}
         ${h.horas100 > 0 ? ` · Extra 100%: <strong style="color:var(--accent-danger)">${h.horas100}h</strong>` : ''}
         ${h.anticipo > 0 ? ` · Anticipo: <strong style="color:var(--accent-danger)">-${fmt$(h.anticipo)}</strong>` : ''}
@@ -1318,7 +1331,6 @@ function renderAlertas() {
   const alerts = [];
 
   db.operarios.filter(isActivo).forEach(o => {
-    if (!o.ckConductaPol) alerts.push({ nivel: 'warn', nombre: `${o.apellido}, ${o.nombre}`, msg: 'Falta certificado de Buena Conducta — Policía de Cba' });
     if (!o.ckConductaRen) alerts.push({ nivel: 'warn', nombre: `${o.apellido}, ${o.nombre}`, msg: 'Falta certificado de Buena Conducta — RENAPER' });
     if (!o.ckFichaIng) alerts.push({ nivel: 'warn', nombre: `${o.apellido}, ${o.nombre}`, msg: 'Falta completar ficha de ingreso a la empresa' });
     if (o.vtoMono) {
