@@ -337,6 +337,32 @@
     <!-- ═══ DASHBOARD ═══ -->
     <div class="section active" id="sec-dashboard">
       <div class="grid-4" style="margin-bottom:20px" id="statsGrid"></div>
+
+      <!-- FACTURACIÓN Y AUSENCIAS -->
+      <div class="grid-2" style="margin-bottom:20px">
+
+        <!-- Panel Facturación -->
+        <div class="panel">
+          <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span><span class="dot dot-warn"></span>Pagos Liquidados</span>
+            <select id="dashFiltSector" onchange="renderDashboard()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 8px;font-family:var(--mono);font-size:11px;outline:none">
+              <option value="">Todos</option>
+              <option value="SEGURIDAD">Seguridad</option>
+              <option value="LIMPIEZA">Limpieza</option>
+            </select>
+          </div>
+          <div id="dashFacturacion"></div>
+        </div>
+
+        <!-- Panel Ausencias -->
+        <div class="panel">
+          <div class="panel-title"><span class="dot dot-danger"></span>Ausencias / Licencias</div>
+          <div id="dashAusencias"></div>
+        </div>
+
+      </div>
+
+      <!-- LISTAS POR SECTOR -->
       <div class="grid-2">
         <div class="panel" id="segPanel">
           <div class="panel-title"><span class="dot dot-seg"></span>Seguridad — Operarios Activos</div>
@@ -877,6 +903,131 @@ function renderDashboard() {
     <div class="stat-card"><div class="stat-val" style="color:var(--accent-warn)">${sinDocs.length}</div><div class="stat-lbl">Docs Incompletos</div></div>
   `;
 
+  // ── FACTURACIÓN ──────────────────────────────────────
+  const filtSector = (document.getElementById('dashFiltSector') || {}).value || '';
+  const hoy = new Date();
+  const mesActual = hoy.toISOString().substr(0, 7); // "YYYY-MM"
+
+  // Registros del mes en curso (ambas quincenas + mensual)
+  const registrosMes = db.horas.filter(h => {
+    if (h.periodo !== mesActual) return false;
+    if (filtSector) {
+      const op = db.operarios.find(o => o.id === h.opId);
+      if (!op || op.sector !== filtSector) return false;
+    }
+    return true;
+  });
+
+  const totalMes = registrosMes.reduce((s, h) => s + (h.total || 0), 0);
+  const totalSeg = db.horas.filter(h => {
+    if (h.periodo !== mesActual) return false;
+    const op = db.operarios.find(o => o.id === h.opId);
+    return op && op.sector === 'SEGURIDAD';
+  }).reduce((s, h) => s + (h.total || 0), 0);
+  const totalLim = db.horas.filter(h => {
+    if (h.periodo !== mesActual) return false;
+    const op = db.operarios.find(o => o.id === h.opId);
+    return op && op.sector === 'LIMPIEZA';
+  }).reduce((s, h) => s + (h.total || 0), 0);
+
+  // Detalle por operario en el mes
+  const detalleMap = {};
+  registrosMes.forEach(h => {
+    const op = db.operarios.find(o => o.id === h.opId);
+    if (!op) return;
+    if (!detalleMap[h.opId]) detalleMap[h.opId] = { op, total: 0, registros: [] };
+    detalleMap[h.opId].total += h.total || 0;
+    detalleMap[h.opId].registros.push(h);
+  });
+  const detalles = Object.values(detalleMap).sort((a, b) => b.total - a.total);
+
+  const mesLabel = hoy.toLocaleString('es-AR', { month: 'long', year: 'numeric' });
+
+  document.getElementById('dashFacturacion').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mes en curso — ${mesLabel}</div>
+      <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent-warn)">${fmt$(filtSector ? (filtSector === 'SEGURIDAD' ? totalSeg : totalLim) : totalMes)}</div>
+      ${!filtSector ? `<div style="display:flex;gap:16px;margin-top:8px">
+        <div style="font-size:12px;color:var(--text3)">Seg: <span style="color:var(--accent-seg);font-family:var(--mono)">${fmt$(totalSeg)}</span></div>
+        <div style="font-size:12px;color:var(--text3)">Limp: <span style="color:var(--accent-lim);font-family:var(--mono)">${fmt$(totalLim)}</span></div>
+      </div>` : ''}
+    </div>
+    ${detalles.length ? `
+      <div style="max-height:220px;overflow-y:auto">
+        ${detalles.map(d => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <div style="font-size:13px;color:var(--white)">${d.op.apellido}, ${d.op.nombre}</div>
+              <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">
+                <span class="badge badge-${d.op.sector === 'SEGURIDAD' ? 'seg' : 'lim'}" style="font-size:9px">${d.op.sector}</span>
+                ${d.registros.map(r => r.modalidad.replace('QUINCENAL_','Q').replace('MENSUAL','MEN')).join(' + ')}
+              </div>
+            </div>
+            <div style="font-family:var(--mono);color:var(--accent-warn);font-size:13px">${fmt$(d.total)}</div>
+          </div>`).join('')}
+      </div>` : `<div style="color:var(--text3);font-size:12px;text-align:center;padding:20px 0">Sin liquidaciones registradas para este mes</div>`}
+  `;
+
+  // ── AUSENCIAS ────────────────────────────────────────
+  const licencias = db.licencias || [];
+
+  // Conteo por tipo (total histórico)
+  const conteoTipo = {};
+  licencias.forEach(l => {
+    conteoTipo[l.tipo] = (conteoTipo[l.tipo] || 0) + 1;
+  });
+
+  // Ausencias en el mes actual
+  const licMes = licencias.filter(l => {
+    // coincide si el inicio o el fin cae en el mes actual
+    return l.fechaInicio && l.fechaInicio.substr(0,7) === mesActual
+        || l.fechaFin && l.fechaFin.substr(0,7) === mesActual;
+  });
+
+  const totalDiasMes = licMes.reduce((s, l) => s + (l.dias || 0), 0);
+  const pagasMes = licMes.filter(l => l.paga === 'SI').reduce((s, l) => s + (l.dias || 0), 0);
+  const noPagasMes = licMes.filter(l => l.paga === 'NO').reduce((s, l) => s + (l.dias || 0), 0);
+
+  const TIPO_COLOR = { VACACIONES: 'var(--accent-lim)', LICENCIA: 'var(--accent-warn)', AUSENCIA: 'var(--accent-danger)' };
+  const TIPO_LABEL = { VACACIONES: 'Vacaciones', LICENCIA: 'Licencias', AUSENCIA: 'Ausencias' };
+
+  const tiposOrden = ['VACACIONES','LICENCIA','AUSENCIA'];
+
+  document.getElementById('dashAusencias').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Mes en curso — ${mesLabel}</div>
+      <div style="display:flex;gap:20px;align-items:flex-end">
+        <div>
+          <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--white)">${totalDiasMes}</div>
+          <div style="font-size:11px;color:var(--text3)">días totales</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);line-height:2">
+          <div>Con goce: <span style="color:var(--accent-lim);font-family:var(--mono)">${pagasMes}d</span></div>
+          <div>Sin goce: <span style="color:var(--accent-danger);font-family:var(--mono)">${noPagasMes}d</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Totales históricos por motivo</div>
+      ${tiposOrden.map(tipo => {
+        const cant = conteoTipo[tipo] || 0;
+        const diasTipo = licencias.filter(l => l.tipo === tipo).reduce((s,l) => s + (l.dias||0), 0);
+        const pct = licencias.length ? Math.round(cant / licencias.length * 100) : 0;
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;color:${TIPO_COLOR[tipo]}">${TIPO_LABEL[tipo]}</span>
+            <span style="font-family:var(--mono);font-size:12px;color:var(--text2)">${cant} registro${cant!==1?'s':''} · ${diasTipo} día${diasTipo!==1?'s':''}</span>
+          </div>
+          <div style="height:4px;background:var(--bg3);border-radius:2px">
+            <div style="height:4px;background:${TIPO_COLOR[tipo]};width:${pct}%;border-radius:2px;transition:width 0.3s"></div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${!licencias.length ? '<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0">Sin registros de licencias cargados</div>' : ''}
+    </div>
+  `;
+
+  // ── LISTAS POR SECTOR ────────────────────────────────
   const mkList = arr => arr.length
     ? arr.map(o => `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="width:36px;height:36px;background:var(--bg3);border:1px solid var(--border2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text3)">
