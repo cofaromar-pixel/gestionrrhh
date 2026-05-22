@@ -379,7 +379,11 @@
     <div class="section" id="sec-personal">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div style="font-family:var(--mono);font-size:13px;color:var(--white);letter-spacing:2px;text-transform:uppercase">Base de Operarios</div>
-        <button class="btn btn-primary" onclick="openModal('nuevo')">+ Nuevo Operario</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-sm btn-green" onclick="exportarNominaExcel()" title="Exportar nómina a Excel">📊 Excel</button>
+          <button class="btn btn-sm btn-warn" onclick="exportarNominaPDF()" title="Imprimir / exportar a PDF">🖨 PDF</button>
+          <button class="btn btn-primary" onclick="openModal('nuevo')">+ Nuevo Operario</button>
+        </div>
       </div>
       <div class="filter-bar">
         <input id="filtNombre" type="text" placeholder="Buscar por nombre / apellido..." oninput="renderTabla()" style="min-width:220px">
@@ -1783,6 +1787,159 @@ function renderLicencias() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORTAR NÓMINA
+// ═══════════════════════════════════════════════════════
+function getNominaFiltrada() {
+  const q = (document.getElementById('filtNombre').value || '').toLowerCase();
+  const sec = document.getElementById('filtSector').value;
+  const est = document.getElementById('filtEstado').value;
+  return db.operarios.filter(o => {
+    const nombre = (o.apellido + ' ' + o.nombre).toLowerCase();
+    if (q && !nombre.includes(q)) return false;
+    if (sec && o.sector !== sec) return false;
+    if (est === 'activo' && !isActivo(o)) return false;
+    if (est === 'egresado' && isActivo(o)) return false;
+    return true;
+  }).sort((a, b) => a.apellido.localeCompare(b.apellido));
+}
+
+function exportarNominaExcel() {
+  const rows = getNominaFiltrada();
+  if (!rows.length) { alert('No hay operarios para exportar con los filtros actuales.'); return; }
+
+  // Punto y coma como separador → Excel en Argentina lo abre columna por columna
+  const SEP = ';';
+
+  const esc = v => {
+    if (v === null || v === undefined) return '';
+    const s = String(v).replace(/\r?\n/g, ' ');
+    // Si contiene el separador, comillas o comilla doble → encerrar en comillas
+    if (s.includes(SEP) || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+
+  const cols = [
+    'Legajo','Apellido','Nombre','DNI/CUIT','Sector','Fecha Ingreso','Fecha Egreso',
+    'Estado','Modalidad Pago','Valor Hora','Grupo Sanguineo','Asegurado',
+    'Monotributo Cat.','Vto. Monotributo','Domicilio','E-mail','Celular / Telefono',
+    'Fecha Nacimiento','Buena Conducta RENAPER','Ficha Ingreso',
+    'Contacto 1 (Nombre)','Contacto 1 (Relacion)','Contacto 1 (Tel)',
+    'Contacto 2 (Nombre)','Contacto 2 (Relacion)','Contacto 2 (Tel)',
+    'Observaciones'
+  ];
+
+  const dataRows = rows.map(o => {
+    const c1 = (o.contactos && o.contactos[0]) || {};
+    const c2 = (o.contactos && o.contactos[1]) || {};
+    return [
+      legajoNum(o.id),
+      o.apellido,
+      o.nombre,
+      o.dni,
+      o.sector,
+      fmtDate(o.fechaIng),
+      o.fechaEgr ? fmtDate(o.fechaEgr) : '',
+      isActivo(o) ? 'Activo' : 'Egresado',
+      o.modalidad || '',
+      String(o.valorHora || 0).replace('.', ','),   // decimal con coma para Excel AR
+      o.grupoSang || '',
+      o.asegurado === 'SI' ? 'Si' : o.asegurado === 'NO' ? 'No' : '',
+      o.monotributo || '',
+      o.vtoMono ? fmtDate(o.vtoMono) : '',
+      o.domicilio || '',
+      o.email || '',
+      o.celular || '',
+      o.fechaNac ? fmtDate(o.fechaNac) : '',
+      o.ckConductaRen ? 'Si' : 'No',
+      o.ckFichaIng ? 'Si' : 'No',
+      c1.nombre || '', c1.relacion || '', c1.telefono || '',
+      c2.nombre || '', c2.relacion || '', c2.telefono || '',
+      o.obs || ''
+    ].map(esc).join(SEP);
+  });
+
+  // BOM UTF-8 + sep= para que Excel detecte el separador automáticamente
+  const csv = '\uFEFF' + 'sep=' + SEP + '\r\n'
+            + cols.map(esc).join(SEP) + '\r\n'
+            + dataRows.join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const sec = document.getElementById('filtSector').value;
+  const suf = sec ? '_' + sec.toLowerCase() : '_todos';
+  a.download = 'nomina' + suf + '_' + new Date().toISOString().substr(0,10) + '.csv';
+  a.click();
+}
+
+function exportarNominaPDF() {
+  const rows = getNominaFiltrada();
+  if (!rows.length) { alert('No hay operarios para exportar con los filtros actuales.'); return; }
+
+  const sec = document.getElementById('filtSector').value;
+  const est = document.getElementById('filtEstado').value;
+  const titulo = 'Nómina de Personal'
+    + (sec ? ' — ' + sec : '')
+    + (est === 'activo' ? ' · Activos' : est === 'egresado' ? ' · Egresados' : '');
+
+  const filas = rows.map(o => `
+    <tr>
+      <td>${legajoNum(o.id)}</td>
+      <td><strong>${o.apellido}</strong>, ${o.nombre}</td>
+      <td>${o.dni}</td>
+      <td class="badge-${o.sector === 'SEGURIDAD' ? 'seg' : 'lim'}">${o.sector}</td>
+      <td>${fmtDate(o.fechaIng)}</td>
+      <td>${o.modalidad || '—'}</td>
+      <td>$${Number(o.valorHora||0).toLocaleString('es-AR',{minimumFractionDigits:2})}</td>
+      <td style="font-weight:bold;color:#cc0033">${o.grupoSang || '—'}</td>
+      <td>${o.asegurado === 'SI' ? '✓ Sí' : o.asegurado === 'NO' ? '✗ No' : '—'}</td>
+      <td>${isActivo(o) ? '<span class="act">Activo</span>' : '<span class="egr">Egresado<br>' + fmtDate(o.fechaEgr) + '</span>'}</td>
+      <td>${o.email || '—'}</td>
+      <td>${o.celular || '—'}</td>
+      <td>${o.domicilio || '—'}</td>
+      <td>${(o.contactos||[]).map(c => '<strong>' + c.nombre + '</strong>' + (c.relacion ? ' (' + c.relacion + ')' : '') + ': ' + c.telefono).join('<br>') || '—'}</td>
+      <td style="font-size:8px">${o.ckConductaRen ? '✓' : '✗'} RENAPER<br>${o.ckFichaIng ? '✓' : '✗'} Ficha</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>${titulo}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Arial,sans-serif; font-size:8.5px; color:#111; padding:12px; }
+    h1 { font-size:13px; color:#1a1a2e; margin-bottom:3px; }
+    .sub { font-size:9px; color:#666; margin-bottom:12px; }
+    table { width:100%; border-collapse:collapse; }
+    th { background:#1a1a2e; color:#fff; padding:5px 4px; text-align:left; font-size:7.5px; letter-spacing:.5px; text-transform:uppercase; white-space:nowrap; }
+    td { padding:4px; border-bottom:1px solid #dde; vertical-align:top; }
+    tr:nth-child(even) td { background:#f5f6fb; }
+    .badge-seg { color:#0077aa; font-weight:bold; }
+    .badge-lim { color:#007744; font-weight:bold; }
+    .act { color:#007744; font-weight:bold; }
+    .egr { color:#cc0033; font-size:7.5px; }
+    tfoot td { font-weight:bold; border-top:2px solid #1a1a2e; padding:6px 4px; background:#f0f2ff; }
+    @media print { @page { size:A4 landscape; margin:8mm; } body { padding:0; } }
+  </style></head><body>
+  <h1>${titulo}</h1>
+  <div class="sub">Generado: ${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})} &nbsp;·&nbsp; Total: ${rows.length} operario${rows.length!==1?'s':''}</div>
+  <table>
+    <thead><tr>
+      <th>Legajo</th><th>Apellido y Nombre</th><th>DNI/CUIT</th><th>Sector</th>
+      <th>F. Ingreso</th><th>Modalidad</th><th>Val. Hora</th><th>Gr. Sang.</th>
+      <th>Asegurado</th><th>Estado</th><th>E-mail</th><th>Celular</th>
+      <th>Domicilio</th><th>Contacto Emergencia</th><th>Docs</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+    <tfoot><tr><td colspan="15">Total en nómina: ${rows.length} operario${rows.length!==1?'s':''}</td></tr></tfoot>
+  </table>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const v = window.open('','_blank','width=1200,height=800');
+  v.document.write(html);
+  v.document.close();
 }
 
 // ═══════════════════════════════════════════════════════
