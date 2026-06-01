@@ -425,7 +425,10 @@
     <div class="section" id="sec-horas">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div style="font-family:var(--mono);font-size:13px;color:var(--white);letter-spacing:2px;text-transform:uppercase">Horas Trabajadas / Liquidación</div>
-        <button class="btn btn-primary" onclick="openModalHoras()">+ Cargar Horas</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-sm btn-green" onclick="exportarHorasExcel()" title="Exportar liquidaciones a Excel">📊 Excel</button>
+          <button class="btn btn-primary" onclick="openModalHoras()">+ Cargar Horas</button>
+        </div>
       </div>
       <div class="filter-bar">
         <select id="filtHorasSector" onchange="renderHoras()">
@@ -675,6 +678,39 @@
       <div class="form-group"><label>Anticipo cobrado ($)</label><input id="hAnticipo" type="number" step="0.01" placeholder="0.00" oninput="calcLiq()"></div>
       <div class="form-group"><label>Nro. Factura</label><input id="hNroFactura" type="text" placeholder="0001-00000001"></div>
     </div>
+    <!-- ── ADICIONALES ── -->
+    <div style="font-family:var(--mono);font-size:11px;color:var(--accent-seg);letter-spacing:2px;text-transform:uppercase;margin:8px 0 4px;border-top:1px solid var(--border);padding-top:12px">Adicionales</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Adicional 1 ($)</label>
+        <input id="hAdicional1" type="number" step="0.01" placeholder="0.00" oninput="calcLiq()">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Descripción Adicional 1</label>
+        <input id="hAdicional1Desc" type="text" placeholder="Motivo del adicional...">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Adicional 2 ($)</label>
+        <input id="hAdicional2" type="number" step="0.01" placeholder="0.00" oninput="calcLiq()">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Descripción Adicional 2</label>
+        <input id="hAdicional2Desc" type="text" placeholder="Motivo del adicional...">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Adicional 3 ($)</label>
+        <input id="hAdicional3" type="number" step="0.01" placeholder="0.00" oninput="calcLiq()">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Descripción Adicional 3</label>
+        <input id="hAdicional3Desc" type="text" placeholder="Motivo del adicional...">
+      </div>
+    </div>
+
     <div class="form-group">
       <label>Observaciones</label>
       <textarea id="hObs" rows="2" placeholder="Notas de la liquidación..."></textarea>
@@ -685,7 +721,10 @@
       <div class="liq-row"><span>Horas normales</span><span id="pNorm">$0.00</span></div>
       <div class="liq-row"><span>Horas extra 50%</span><span id="pExtra50">$0.00</span></div>
       <div class="liq-row"><span>Horas extra 100%</span><span id="pExtra100">$0.00</span></div>
-      <div class="liq-row"><span>Subtotal</span><span id="pSub">$0.00</span></div>
+      <div class="liq-row"><span>Subtotal horas</span><span id="pSub">$0.00</span></div>
+      <div class="liq-row" id="rowAd1" style="display:none"><span id="pAd1Label">Adicional 1</span><span id="pAd1">$0.00</span></div>
+      <div class="liq-row" id="rowAd2" style="display:none"><span id="pAd2Label">Adicional 2</span><span id="pAd2">$0.00</span></div>
+      <div class="liq-row" id="rowAd3" style="display:none"><span id="pAd3Label">Adicional 3</span><span id="pAd3">$0.00</span></div>
       <div class="liq-row"><span>Anticipo</span><span id="pAnticipo" style="color:var(--accent-danger)">-$0.00</span></div>
       <div class="liq-total" id="pTotal">TOTAL A PAGAR: $0.00</div>
     </div>
@@ -1341,7 +1380,8 @@ function openModalHoras() {
   const today = new Date();
   document.getElementById('hPeriodo').value = today.toISOString().substr(0, 7);
 
-  ['hDias','hHorasNorm','hHoras50','hHoras100','hAnticipo','hNroFactura','hObs'].forEach(id => {
+  ['hDias','hHorasNorm','hHoras50','hHoras100','hAnticipo','hNroFactura','hObs',
+   'hAdicional1','hAdicional1Desc','hAdicional2','hAdicional2Desc','hAdicional3','hAdicional3Desc'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('hModalidad').value = 'MENSUAL';
@@ -1366,17 +1406,32 @@ function calcLiq() {
   const h50 = parseFloat(document.getElementById('hHoras50').value) || 0;
   const h100 = parseFloat(document.getElementById('hHoras100').value) || 0;
   const ant = parseFloat(document.getElementById('hAnticipo').value) || 0;
+  const ad1 = parseFloat(document.getElementById('hAdicional1').value) || 0;
+  const ad2 = parseFloat(document.getElementById('hAdicional2').value) || 0;
+  const ad3 = parseFloat(document.getElementById('hAdicional3').value) || 0;
+  const ad1Desc = document.getElementById('hAdicional1Desc').value || 'Adicional 1';
+  const ad2Desc = document.getElementById('hAdicional2Desc').value || 'Adicional 2';
+  const ad3Desc = document.getElementById('hAdicional3Desc').value || 'Adicional 3';
 
   const norm = vh * hn;
   const extra50 = vh * 1.5 * h50;
   const extra100 = vh * 2 * h100;
   const sub = norm + extra50 + extra100;
-  const total = sub;
+  const total = sub + ad1 + ad2 + ad3;
 
   document.getElementById('pNorm').textContent = fmt$(norm);
   document.getElementById('pExtra50').textContent = fmt$(extra50);
   document.getElementById('pExtra100').textContent = fmt$(extra100);
   document.getElementById('pSub').textContent = fmt$(sub);
+
+  // Adicionales en el preview
+  const rowAd1 = document.getElementById('rowAd1');
+  const rowAd2 = document.getElementById('rowAd2');
+  const rowAd3 = document.getElementById('rowAd3');
+  if (ad1 > 0) { rowAd1.style.display = ''; document.getElementById('pAd1Label').textContent = ad1Desc; document.getElementById('pAd1').textContent = fmt$(ad1); } else { rowAd1.style.display = 'none'; }
+  if (ad2 > 0) { rowAd2.style.display = ''; document.getElementById('pAd2Label').textContent = ad2Desc; document.getElementById('pAd2').textContent = fmt$(ad2); } else { rowAd2.style.display = 'none'; }
+  if (ad3 > 0) { rowAd3.style.display = ''; document.getElementById('pAd3Label').textContent = ad3Desc; document.getElementById('pAd3').textContent = fmt$(ad3); } else { rowAd3.style.display = 'none'; }
+
   document.getElementById('pAnticipo').textContent = '-' + fmt$(ant);
   document.getElementById('pTotal').textContent = 'TOTAL A PAGAR: ' + fmt$(total - ant);
 }
@@ -1391,8 +1446,14 @@ function saveHoras() {
   const h50 = parseFloat(document.getElementById('hHoras50').value) || 0;
   const h100 = parseFloat(document.getElementById('hHoras100').value) || 0;
   const ant = parseFloat(document.getElementById('hAnticipo').value) || 0;
+  const ad1 = parseFloat(document.getElementById('hAdicional1').value) || 0;
+  const ad1Desc = document.getElementById('hAdicional1Desc').value || '';
+  const ad2 = parseFloat(document.getElementById('hAdicional2').value) || 0;
+  const ad2Desc = document.getElementById('hAdicional2Desc').value || '';
+  const ad3 = parseFloat(document.getElementById('hAdicional3').value) || 0;
+  const ad3Desc = document.getElementById('hAdicional3Desc').value || '';
 
-  const total = (vh * hn) + (vh * 1.5 * h50) + (vh * 2 * h100);
+  const total = (vh * hn) + (vh * 1.5 * h50) + (vh * 2 * h100) + ad1 + ad2 + ad3;
 
   db.horas.push({
     id: uid(),
@@ -1401,6 +1462,9 @@ function saveHoras() {
     dias: parseFloat(document.getElementById('hDias').value) || 0,
     horasNorm: hn, horas50: h50, horas100: h100,
     valorHora: vh, anticipo: ant, total,
+    adicional1: ad1, adicional1Desc: ad1Desc,
+    adicional2: ad2, adicional2Desc: ad2Desc,
+    adicional3: ad3, adicional3Desc: ad3Desc,
     nroFactura: document.getElementById('hNroFactura').value,
     obs: document.getElementById('hObs').value,
     fechaCarga: new Date().toISOString(),
@@ -1461,6 +1525,9 @@ function renderHoras() {
         Días: <strong>${h.dias}</strong> · Horas norm: <strong>${h.horasNorm}h</strong> (${fmt$(h.valorHora)}/h)
         ${h.horas50 > 0 ? ` · Extra 50%: <strong style="color:var(--accent-warn)">${h.horas50}h</strong>` : ''}
         ${h.horas100 > 0 ? ` · Extra 100%: <strong style="color:var(--accent-danger)">${h.horas100}h</strong>` : ''}
+        ${h.adicional1 > 0 ? `<br>➕ <strong style="color:var(--accent-purple)">${h.adicional1Desc || 'Adicional 1'}:</strong> <span style="color:var(--accent-purple)">${fmt$(h.adicional1)}</span>` : ''}
+        ${h.adicional2 > 0 ? `<br>➕ <strong style="color:var(--accent-purple)">${h.adicional2Desc || 'Adicional 2'}:</strong> <span style="color:var(--accent-purple)">${fmt$(h.adicional2)}</span>` : ''}
+        ${h.adicional3 > 0 ? `<br>➕ <strong style="color:var(--accent-purple)">${h.adicional3Desc || 'Adicional 3'}:</strong> <span style="color:var(--accent-purple)">${fmt$(h.adicional3)}</span>` : ''}
         ${h.anticipo > 0 ? ` · Anticipo: <strong style="color:var(--accent-danger)">-${fmt$(h.anticipo)}</strong>` : ''}
         ${h.nroFactura ? ` · Fact. <span style="color:var(--accent-seg)">${h.nroFactura}</span>` : ''}
         ${h.obs ? `<br><em style="color:var(--text3)">${h.obs}</em>` : ''}
@@ -1943,8 +2010,83 @@ function exportarNominaPDF() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  INIT
+//  EXPORTAR HORAS / LIQUIDACIÓN
 // ═══════════════════════════════════════════════════════
+function exportarHorasExcel() {
+  const sec = document.getElementById('filtHorasSector').value;
+  const per = document.getElementById('filtHorasPeriodo').value;
+  const q = (document.getElementById('filtHorasNombre').value || '').toLowerCase();
+
+  let registros = db.horas.filter(h => {
+    const op = db.operarios.find(o => o.id === h.opId);
+    if (!op) return false;
+    if (sec && op.sector !== sec) return false;
+    if (per && h.periodo !== per) return false;
+    if (q && !(op.apellido + ' ' + op.nombre).toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => b.periodo.localeCompare(a.periodo) || b.fechaCarga.localeCompare(a.fechaCarga));
+
+  if (!registros.length) { alert('No hay registros para exportar con los filtros actuales.'); return; }
+
+  const bom = '\uFEFF';
+  const sep = ';';
+  const headers = [
+    'Período','Apellido y Nombre','Sector','DNI/CUIT','Modalidad','Días',
+    'Horas Norm.','Horas Extra 50%','Horas Extra 100%','Valor Hora ($)',
+    'Subtotal Horas ($)','Adicional 1 ($)','Desc. Adicional 1',
+    'Adicional 2 ($)','Desc. Adicional 2','Adicional 3 ($)','Desc. Adicional 3',
+    'Total Bruto ($)','Anticipo ($)','Total Neto ($)','Nro. Factura','Observaciones','Fecha Carga'
+  ];
+
+  const rows = registros.map(h => {
+    const op = db.operarios.find(o => o.id === h.opId) || {};
+    const vh = h.valorHora || 0;
+    const subHoras = (vh * h.horasNorm) + (vh * 1.5 * (h.horas50||0)) + (vh * 2 * (h.horas100||0));
+    const ad1 = h.adicional1 || 0;
+    const ad2 = h.adicional2 || 0;
+    const ad3 = h.adicional3 || 0;
+    const bruto = subHoras + ad1 + ad2 + ad3;
+    const neto = bruto - (h.anticipo || 0);
+    const fmtN = n => n.toFixed(2).replace('.', ',');
+    const esc = s => '"' + (s || '').replace(/"/g, '""') + '"';
+    return [
+      h.periodo,
+      esc(op.apellido + ', ' + op.nombre),
+      op.sector || '',
+      op.dni || '',
+      h.modalidad ? h.modalidad.replace('_',' ') : '',
+      h.dias || 0,
+      h.horasNorm || 0,
+      h.horas50 || 0,
+      h.horas100 || 0,
+      fmtN(vh),
+      fmtN(subHoras),
+      fmtN(ad1),
+      esc(h.adicional1Desc || ''),
+      fmtN(ad2),
+      esc(h.adicional2Desc || ''),
+      fmtN(ad3),
+      esc(h.adicional3Desc || ''),
+      fmtN(bruto),
+      fmtN(h.anticipo || 0),
+      fmtN(neto),
+      esc(h.nroFactura || ''),
+      esc(h.obs || ''),
+      h.fechaCarga ? h.fechaCarga.substr(0,10) : '',
+    ].join(sep);
+  });
+
+  const csv = bom + headers.join(sep) + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const sufPer = per ? '_' + per : '';
+  const sufSec = sec ? '_' + sec.toLowerCase() : '';
+  a.download = 'liquidaciones' + sufPer + sufSec + '_' + new Date().toISOString().substr(0,10) + '.csv';
+  a.click();
+}
+
+
 loadDB();
 </script>
 </body>
